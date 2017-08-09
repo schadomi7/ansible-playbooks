@@ -1,0 +1,30 @@
+---
+- name: Install zsh
+  package:
+    name: zsh
+    state: present
+  ignore_errors: yes
+  register: zsh_installed
+  become: yes
+
+- name: Add user "{{ username }}"
+  user:
+    append: yes
+    name: "{{ username }}"
+    createhome: yes
+    shell: "{{ '/bin/zsh' if zsh_installed|succeeded else omit }}"
+    groups: "{{ 'wheel' if (users[username]|default)['sudo']|default(no) else omit }}"
+    password: "{{ (users[username]|default)['password']|default(omit) }}"
+  become: yes
+
+- name: Add authorized ssh keys for user "{{ username }}"
+  authorized_key:
+    exclusive: yes
+    key: "
+    {%- for key in users[username]['keys'] %}
+    {{- key }}
+
+    {% endfor %}"
+    user: "{{ username }}"
+  become: yes
+  when: (users[username]|default)['keys'] is defined

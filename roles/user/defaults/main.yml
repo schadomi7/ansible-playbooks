@@ -1,0 +1,8 @@
+username: beinke
+
+users:
+  beinke:
+    sudo: yes
+    keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMCC4cFL1xcZOsIzXg1b/M4b89ofMKErNhg9s+0NdBVC beinke@th1
+    password: $6$rounds=2424242$bYuzaht05/dRh8fI$/Z/R9AgUhPwaAmsCulc86ruqnUFLsv.hN490dOI0JtEk71/oWh1c.W3sGQJPAUbXaOynKiLLwizEdA1IOdxDh0
