@@ -1,5 +1,5 @@
 ---
-- name: Install zsh
+- name: ensure zsh is installed
   package:
     name: zsh
     state: present
@@ -7,7 +7,7 @@
   register: zsh_installed
   become: yes
 
-- name: Add user "{{ username }}"
+- name: ensure user "{{ username }}" is present
   user:
     append: yes
     name: "{{ username }}"
@@ -17,7 +17,7 @@
     password: "{{ (users[username]|default)['password']|default(omit) }}"
   become: yes
 
-- name: Add authorized ssh keys for user "{{ username }}"
+- name: ensure authorized ssh keys for user "{{ username }}" is present
   authorized_key:
     exclusive: yes
     key: "
