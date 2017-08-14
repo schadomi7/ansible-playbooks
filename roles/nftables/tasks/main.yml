@@ -1,0 +1,30 @@
+- name: ensure nftables is installed
+  package:
+    name: nftables
+  become: yes
+
+- name: ensure iptables is not installed
+  package:
+    name: iptables
+    state: absent
+  become: yes
+
+- name: ensure /etc/nftables.d/ exists
+  file:
+    state: directory
+    dest: /etc/nftables.d
+  become: yes
+  notify: reload nftables
+
+- name: ensure nftconfig gets loaded
+  service:
+    name: nftables
+    enabled: yes
+  become: yes
+
+- name: ensure /etc/nftables.d/30-global.nft is up to date
+  template:
+    src: 30-global.nft
+    dest: /etc/nftables.d/30-global.nft
+  become: yes
+  notify: reload nftables

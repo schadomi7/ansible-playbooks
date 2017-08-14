@@ -1,0 +1,17 @@
+- name: aquire files in /etc/nftables.d/
+  shell: find '/etc/nftables.d/' -type f -iname '[^.]*.nft'
+  register: nftablesd_files
+  become: yes
+
+- name: ensure /etc/nftables.conf is up to date
+  template:
+    src: nftables.conf
+    dest: /etc/nftables.conf
+    backup: yes
+  become: yes
+
+- name: do the reload of nftables
+  service:
+    name: nftables
+    state: restarted
+  become: yes

@@ -1,0 +1,38 @@
+{{ ansible_managed|comment }}
+
+table inet filter {
+  chain global {
+    # Limit pingv6 requests to 10 per second
+    ip6 nexthdr icmpv6 icmpv6 type echo-request limit rate 10/second accept;
+    ip6 nexthdr icmpv6 icmpv6 type echo-request drop;
+
+    # Limit other icmpv6 packets to 10 per minute
+    ip6 nexthdr icmpv6 limit rate 10/minute accept;
+    ip6 nexthdr icmpv6 drop;
+
+    # Limit ping requests to 10 per second
+    ip protocol icmp icmp type echo-request limit rate 10/second accept;
+    ip protocol icmp icmp type echo-request drop;
+
+    # Limit other icmp packets to 10 per minute
+    ip protocol icmp limit rate 10/minute accept;
+    ip protocol icmp drop;
+
+    # Utilize connection tracking
+    ct state established,related accept;
+    ct state invalid drop;
+
+    # Accept DNS traffic on udp port 53
+    udp dport 53 accept;
+  }
+
+  chain input_global {
+    type filter hook input priority -50;
+    jump global;
+  }
+
+  chain input_deadend {
+    type filter hook input priority 100;
+    tcp dport != ssh drop;
+  }
+}
