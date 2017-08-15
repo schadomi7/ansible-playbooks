@@ -1,7 +1,7 @@
 {{ ansible_managed|comment }}
 
 table inet filter {
-  map tcp_sport_verdict {
+  map tcp_dport_verdict {
     type inet_service : verdict;
   }
 
@@ -37,7 +37,7 @@ table inet filter {
     jump base;
 
     # Jump to the appropriate chain
-    tcp dport vmap @tcp_sport_verdict;
+    tcp dport vmap @tcp_dport_verdict;
 
     # SSH is open by default but we can enforce a strict policy earlier
     tcp dport ssh accept;
