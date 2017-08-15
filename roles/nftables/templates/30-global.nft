@@ -1,7 +1,11 @@
 {{ ansible_managed|comment }}
 
 table inet filter {
-  chain global {
+  map tcp_sport_verdict {
+    type inet_service : verdict;
+  }
+
+  chain base {
     # Limit pingv6 requests to 10 per second
     ip6 nexthdr icmpv6 icmpv6 type echo-request limit rate 10/second accept;
     ip6 nexthdr icmpv6 icmpv6 type echo-request drop;
@@ -26,13 +30,16 @@ table inet filter {
     udp dport 53 accept;
   }
 
-  chain input_global {
-    type filter hook input priority -50;
-    jump global;
-  }
+  chain input {
+    type filter hook input priority 0; policy drop;
 
-  chain input_deadend {
-    type filter hook input priority 100;
-    tcp dport != ssh drop;
+    # Do the basic filtering
+    jump base;
+
+    # Jump to the appropriate chain
+    tcp dport vmap @tcp_sport_verdict;
+
+    # SSH is open by default but we can enforce a strict policy earlier
+    tcp dport ssh accept;
   }
 }
