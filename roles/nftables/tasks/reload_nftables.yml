@@ -1,6 +1,7 @@
 - name: aquire files in /etc/nftables.d/
   shell: find '/etc/nftables.d/' -type f -iname '[^.]*.nft'
   register: nftablesd_files
+  changed_when: no
   become: yes
 
 - name: ensure /etc/nftables.conf is up to date
