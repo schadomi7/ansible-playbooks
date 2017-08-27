@@ -1,0 +1,70 @@
+{{ ansible_managed|comment }}
+
+[INCLUDES]
+
+after = nftables-sets.conf
+
+[Definition]
+
+# Option:  actionstart
+# Notes.:  command executed once at the start of Fail2Ban.
+# Values:  CMD
+#
+actionstart = systemctl reload nftables.service
+
+# Option:  actionstop
+# Notes.:  command executed once at the end of Fail2Ban
+# Values:  CMD
+#
+actionstop = <actionstart>
+
+# Option:  actioncheck
+# Notes.:  command executed once before each actionban command
+# Values:  CMD
+#
+actioncheck = <nftables> list set inet <nftables_table> bad_<name>_ipv4
+              <nftables> list set inet <nftables_table> bad_<name>_ipv6
+
+# Option:  actionban
+# Notes.:  command executed when banning an IP. Take care that the
+#          command is executed with Fail2Ban user rights.
+# Tags..:  See jail.conf(5) man page
+# Values:  CMD
+actionban = <nftables> add element inet <nftables_table> bad_<name>_<nftables_ipversionname> \{ <ip>/<nftables_blockcider> \}
+
+# Option:  actionunban
+# Notes.:  command executed when unbanning an IP. Take care that the
+#          command is executed with Fail2Ban user rights.
+# Tags..:  See jail.conf(5) man page
+# Values:  CMD
+actionunban = <nftables> delete element inet <nftables_table> bad_<name>_<nftables_ipversionname> \{ <ip>/<nftables_blockcider> \}
+
+[Init]
+
+# Option:  nftables
+# Notes.:  Actual command to be executed, including common to all calls options
+# Values:  STRING
+nftables = nft
+
+# Option:  nftables_table
+# Notes.:  table in the address family to work in
+# Values:  STRING  Default: filter
+nftables_table = filter
+
+# Option: nftables_ipversionname
+# Notes.: name of the ip version
+# Values: [ ipv4 | ipv6 ] Default: "ipv4" for IPv4 and "ipv6" for IPv6
+[Init?family=inet4]
+nftables_ipversionname = ipv4
+[Init?family=inet6]
+nftables_ipversionname = ipv6
+[Init]
+
+# Option:  nftables_blockcider
+# Notes.:  cider to quantify the blocking range
+# Values:  INTEGER Default: 32 for IPv4 and 64 for IPv6
+[Init?family=inet4]
+nftables_blockcider = 32
+[Init?family=inet6]
+nftables_blockcider = 64
+[Init]

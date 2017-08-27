@@ -1,0 +1,4 @@
+- name: ensure git is installed
+  package:
+    pkg: git
+  become: true

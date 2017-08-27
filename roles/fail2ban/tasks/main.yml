@@ -1,0 +1,51 @@
+- name: ensure fail2ban is installed
+  git:
+    repo: https://github.com/fail2ban/fail2ban.git
+    dest: /opt/fail2ban
+    version: "0.10"
+  become: yes
+  notify: source_install_fail2ban
+
+- name: ensure fail2ban dependencies are installed
+  package:
+    pkg: "{{ item }}"
+  become: yes
+  notify: source_install_fail2ban
+  with_items:
+    - gamin
+    - python-gamin
+
+- meta: flush_handlers
+
+- name: ensure fail2ban service file is up to date
+  template:
+    src: fail2ban.service
+    dest: /etc/systemd/system/fail2ban.service
+  become: yes
+  register: fail2ban_servicefile
+
+- name: reload systemctl daemon
+  shell: systemctl daemon-reload
+  become: yes
+  when: fail2ban_servicefile|changed
+
+- name: ensure nftables-sets action is up to date
+  template:
+    src: nftables-sets.local
+    dest: /etc/fail2ban/action.d/nftables-sets.local
+  become: yes
+  notify: reload fail2ban
+
+- name: ensure customisation.local is up to date
+  template:
+    src: customisation.local
+    dest: /etc/fail2ban/jail.d/customisation.local
+  become: yes
+  notify: reload fail2ban
+
+- name: ensure fail2ban gets started
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes
+  become: yes

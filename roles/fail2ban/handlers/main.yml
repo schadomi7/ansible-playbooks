@@ -1,0 +1,19 @@
+- name: install fail2ban from source
+  shell: python setup.py install
+  args:
+    chdir: /opt/fail2ban/
+  become: yes
+  listen: source_install_fail2ban
+  notify: restart fail2ban
+
+- name: restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted
+  become: yes
+
+- name: reload fail2ban
+  service:
+    name: fail2ban
+    state: reloaded
+  become: yes
