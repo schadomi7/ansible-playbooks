@@ -1,0 +1,37 @@
+---
+- name: retrieve the ssh version
+  shell: ssh -V 2>&1 | sed -re 's/^[^_]+_([0-9]+\.[0-9]+(p[0-9]+)?).*$/\1/'
+  check_mode: no
+  changed_when: no
+  register: ssh_version
+
+- name: write the sshd config file
+  template:
+    src: sshd_config
+    dest: /etc/ssh/sshd_config
+    backup: yes
+    owner: root
+    group: root
+    mode: 0644
+    validate: '/usr/sbin/sshd -tf %s'
+  notify:
+    - restart ssh-server
+  become: yes
+
+- name: ensure sshd is running (and enable it at boot)
+  service: name=sshd state=started enabled=yes
+  become: yes
+
+- name: ensure /etc/nftables.d/50-sshd.nft is up to date
+  template:
+    src: 50-sshd.nft
+    dest: /etc/nftables.d/50-sshd.nft
+  become: yes
+  notify: reload nftables
+
+- name: ensure fail2ban jail config is up to date
+  template:
+    src: sshd.local
+    dest: /etc/fail2ban/jail.d/sshd.local
+  become: yes
+  notify: reload fail2ban

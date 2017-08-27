@@ -1,0 +1,27 @@
+{{ ansible_managed|comment }}
+
+table inet filter {
+  set bad_sshd_ipv4 {
+    type ipv4_addr;
+    flags interval;
+  }
+  set bad_sshd_ipv6 {
+    type ipv6_addr;
+    flags interval;
+  }
+
+  chain sshd {
+    # Drop packages from bad IPs
+    ip saddr @bad_sshd_ipv4 drop;
+    ip6 saddr @bad_sshd_ipv6 drop;
+
+    # Accept anything else
+    accept;
+  }
+
+  # Add the sshd chain for new connections with dport ssh
+  map tcp_dport_verdict {
+    type inet_service : verdict;
+    elements = { ssh : jump sshd };
+  }
+}
