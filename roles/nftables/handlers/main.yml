@@ -1,2 +1,2 @@
 - name: reload nftables
-  include: reload_nftables.yml
+  include_tasks: reload_nftables.yml
