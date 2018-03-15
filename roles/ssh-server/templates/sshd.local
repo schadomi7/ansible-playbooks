@@ -7,3 +7,8 @@ after = customisation.local
 
 [sshd]
 enabled = true
+mode = aggressive
+
+bantime = 3600
+findtime = 7200
+maxretry = 3
