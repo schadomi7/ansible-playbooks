@@ -15,8 +15,6 @@
     - gamin
     - python-gamin
 
-- meta: flush_handlers
-
 - name: ensure fail2ban service file is up to date
   template:
     src: fail2ban.service
@@ -25,9 +23,12 @@
   register: fail2ban_servicefile
 
 - name: reload systemctl daemon
-  shell: systemctl daemon-reload
+  systemd:
+    daemon_reload: yes
   become: yes
   when: fail2ban_servicefile|changed
+
+- meta: flush_handlers
 
 - name: ensure nftables-sets action is up to date
   template:
