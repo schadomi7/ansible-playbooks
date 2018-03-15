@@ -1,5 +1,5 @@
 ---
-- name: ensure sudo is installes
+- name: ensure sudo is installed
   package:
     name: sudo
     state: present
