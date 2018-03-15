@@ -30,6 +30,13 @@
 
 - meta: flush_handlers
 
+- name: ensure fail2ban.local is up to date
+  template:
+    src: fail2ban.local
+    dest: /etc/fail2ban/fail2ban.local
+  become: yes
+  notify: reload fail2ban
+
 - name: ensure nftables-sets action is up to date
   template:
     src: nftables-sets.local
