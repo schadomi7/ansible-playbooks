@@ -1,4 +1,3 @@
----
 - name: ensure zsh is installed
   package:
     name: zsh
@@ -7,24 +6,24 @@
   register: zsh_installed
   become: yes
 
-- name: ensure user "{{ username }}" is present
+- name: ensure user "{{ user_name|mandatory }}" is present
   user:
     append: yes
-    name: "{{ username }}"
+    name: "{{ user_name }}"
     createhome: yes
     shell: "{{ '/bin/zsh' if zsh_installed|succeeded else omit }}"
-    groups: "{{ 'wheel' if (users[username]|default)['sudo']|default(no) else omit }}"
-    password: "{{ (users[username]|default)['password']|default(omit) }}"
+    groups: "{{ 'wheel' if user_sudo|default(False) else omit }}"
+    password: "{{ user_password|default(omit) }}"
   become: yes
 
-- name: ensure authorized ssh keys for user "{{ username }}" is present
+- name: ensure authorized ssh keys for user "{{ user_name|mandatory }}" is present
   authorized_key:
     exclusive: yes
     key: "
-    {%- for key in users[username]['keys'] %}
+    {%- for key in user_ssh_keys %}
     {{- key }}
 
     {% endfor %}"
-    user: "{{ username }}"
+    user: "{{ user_name|mandatory }}"
   become: yes
-  when: (users[username]|default)['keys'] is defined
+  when: user_ssh_keys is defined
