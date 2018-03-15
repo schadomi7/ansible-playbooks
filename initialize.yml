@@ -1,0 +1,38 @@
+---
+
+# Prompt for a host and add it to the initialization_hosts group
+- hosts: localhost
+  gather_facts: no
+
+  vars_prompt:
+  - name: target_host
+    prompt: Which host to initialize?
+    private: no
+
+  tasks:
+  - add_host:
+      name: "{{ target_host }}"
+      groups: initialization_hosts
+      ansible_ssh_common_args: -o UserKnownHostsFile=/dev/null -o ControlPersist=no -o StrictHostKeyChecking=no
+
+
+# Create the user beinke on the target host
+- hosts: initialization_hosts
+  gather_facts: no
+
+  vars:
+    ansible_user: root
+
+  roles:
+  - role: user
+    user_name: beinke
+    user_password: "{{ users.beinke.password }}"
+    user_ssh_keys: "{{ users.beinke.ssh_keys }}"
+    user_sudo: "{{ users.beinke.sudo }}"
+
+
+# Configure the ssh-server more strictly
+- hosts: initialization_hosts
+
+  roles:
+  - ssh-server
