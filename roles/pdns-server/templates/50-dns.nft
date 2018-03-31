@@ -1,0 +1,16 @@
+{{ ansible_managed|comment }}
+
+
+table inet filter {
+
+  map udp_dport_verdict {
+    type inet_service : verdict;
+    elements = { domain : accept };
+  }
+
+  map tcp_dport_verdict {
+    type inet_service : verdict;
+    elements = { domain : accept };
+  }
+
+}

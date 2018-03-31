@@ -1,0 +1,13 @@
+- name: restart pdns-server
+  service:
+    name: pdns.service
+    state: restarted
+  become: yes
+
+- name: reload pdns-server
+  command: pdns_control reload
+  become: yes
+
+- name: rediscover pdns-server
+  command: pdns_control rediscover
+  become: yes

@@ -1,0 +1,58 @@
+- name: ensure powerdns server is installed
+  package:
+    pkg: "{{ item }}"
+  become: yes
+  notify: restart pdns-server
+  loop:
+  - pdns-server
+  - pdns-backend-sqlite3
+  - dnsutils
+
+- name: ensure the directory for the sqlite db exists
+  file:
+    dest: "{{ pdns_server_sqlite_directory }}"
+    state: directory
+    owner: root
+  become: yes
+
+- name: ensure the pdns.sqlite3 is present
+  args:
+    creates: "{{ pdns_server_sqlite_directory }}/{{ pdns_server_sqlite_file }}"
+  shell: sqlite3 '{{ pdns_server_sqlite_directory }}/{{ pdns_server_sqlite_file }}' < /usr/share/doc/pdns-backend-sqlite3/schema.sqlite3.sql
+  become: yes
+
+- name: ensure pdns.conf ist up to date
+  template:
+    src: pdns.conf
+    dest: /etc/powerdns/pdns.conf
+    backup: yes
+  become: yes
+  notify: restart pdns-server
+
+- name: ensure the local tsig is present for nsupdate
+  args:
+    creates: /run/named/session.key
+    executable: /bin/bash
+    warn: no # suppress warnings about mkdir inside the script
+  shell: |
+    umask go-rwx
+    mkdir -p /run/named
+    tsig="$(openssl rand 64|base64 -w0)"
+    sqlite3 '{{ pdns_server_sqlite_directory }}/{{ pdns_server_sqlite_file }}' <<< "INSERT OR REPLACE INTO tsigkeys (name, algorithm, secret) VALUES ('{{ pdns_server_local_dnsupdate_tsig_name }}', 'hmac-sha512', '$tsig')"
+    echo -e "key \"{{ pdns_server_local_dnsupdate_tsig_name }}\" {\n\talgorithm hmac-sha512;\n\tsecret \"$tsig\";\n};" > /run/named/session.key
+  become: yes
+
+- name: ensure powerdns server is running
+  service:
+    name: pdns.service
+    state: started
+    enabled: yes
+  become: yes
+
+- name: ensure /etc/nftables.d/50-dns.nft is up to date
+  template:
+    src: 50-dns.nft
+    dest: /etc/nftables.d/50-dns.nft
+    backup: yes
+  become: yes
+  notify: reload nftables

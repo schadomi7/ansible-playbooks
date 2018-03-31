@@ -1,0 +1,7 @@
+pdns_server_sqlite_directory: /var/spool/powerdns
+pdns_server_sqlite_file: pdns.sqlite3
+
+pdns_server_default_soa_edit: INCREMENT-WEEKS
+pdns_server_allow_dnsupdate_from: 127.0.0.1,::1
+
+pdns_server_local_dnsupdate_tsig_name: local
