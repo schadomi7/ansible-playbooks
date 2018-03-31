@@ -22,9 +22,12 @@
     enabled: yes
   become: yes
 
-- name: ensure /etc/nftables.d/30-global.nft is up to date
+- name: ensure the default configs in /etc/nftables.d/ are up to date
   template:
-    src: 30-global.nft
-    dest: /etc/nftables.d/30-global.nft
+    src: "{{ item }}"
+    dest: /etc/nftables.d/{{ item }}
   become: yes
   notify: reload nftables
+  loop:
+  - 00-flush_ruleset.nft
+  - 30-global.nft

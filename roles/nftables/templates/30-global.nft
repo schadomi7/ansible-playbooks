@@ -1,6 +1,10 @@
 {{ ansible_managed|comment }}
 
+
 table inet filter {
+  map udp_dport_verdict {
+    type inet_service : verdict;
+  }
   map tcp_dport_verdict {
     type inet_service : verdict;
   }
@@ -25,9 +29,6 @@ table inet filter {
     # Utilize connection tracking
     ct state established,related accept;
     ct state invalid drop;
-
-    # Accept DNS traffic on udp port 53
-    udp dport 53 accept;
   }
 
   chain input {
@@ -37,9 +38,14 @@ table inet filter {
     jump base;
 
     # Jump to the appropriate chain
+    udp dport vmap @udp_dport_verdict;
     tcp dport vmap @tcp_dport_verdict;
 
     # SSH is open by default but we can enforce a strict policy earlier
     tcp dport ssh accept;
   }
 }
+
+# Do this in the future when it is finally supported
+# flush map udp_dport_verdict;
+# flush map tcp_dport_verdict;

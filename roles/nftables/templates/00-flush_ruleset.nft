@@ -1,0 +1,6 @@
+{{ ansible_managed|comment }}
+
+
+# Flushing a bit less and keeping some sets would be nice but it is
+# incedible unstable at the moment so we flush everything
+flush ruleset;

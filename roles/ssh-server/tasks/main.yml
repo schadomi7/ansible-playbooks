@@ -1,4 +1,5 @@
 ---
+
 - name: retrieve the ssh version
   shell: ssh -V 2>&1 | sed -re 's/^[^_]+_([0-9]+\.[0-9]+(p[0-9]+)?).*$/\1/'
   check_mode: no

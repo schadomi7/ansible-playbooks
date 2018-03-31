@@ -1,5 +1,5 @@
 - name: aquire files in /etc/nftables.d/
-  shell: find '/etc/nftables.d/' -type f -iname '[^.]*.nft'
+  shell: find '/etc/nftables.d/' -type f -iname '[^.]*.nft' | sort
   register: nftablesd_files
   changed_when: no
   become: yes
@@ -14,5 +14,5 @@
 - name: do the reload of nftables
   service:
     name: nftables
-    state: restarted
+    state: reloaded
   become: yes
