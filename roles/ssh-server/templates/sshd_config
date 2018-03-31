@@ -7,7 +7,7 @@ AddressFamily any
 
 HostKeyAlgorithms ecdsa-sha2-nistp384-cert-v01@openssh.com,ecdsa-sha2-nistp521-cert-v01@openssh.com,ssh-ed25519-cert-v01@openssh.com,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-ed25519
 
-{% if (ssh_version|default)['stdout']|default(0)|version_compare('7.5', '>=') -%}
+{% if (ssh_version|default)['stdout']|default(0) is version_compare('7.5', '>=') -%}
 
 KexAlgorithms -*sha1*
 

@@ -11,7 +11,7 @@
     append: yes
     name: "{{ user_name }}"
     createhome: yes
-    shell: "{{ '/bin/zsh' if zsh_installed|succeeded else omit }}"
+    shell: "{{ '/bin/zsh' if zsh_installed is succeeded else omit }}"
     groups: "{{ 'wheel' if user_sudo|default(False) else omit }}"
     password: "{{ user_password|default(omit) }}"
   become: yes

@@ -26,7 +26,7 @@
   systemd:
     daemon_reload: yes
   become: yes
-  when: fail2ban_servicefile|changed
+  when: fail2ban_servicefile is changed
 
 - meta: flush_handlers
 
