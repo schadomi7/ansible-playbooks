@@ -1,0 +1,10 @@
+- name: create Server
+  local_action:
+    module: hcloud_server
+    name: "{{ server_name }}"
+    state: "{{ server_state }}"
+    image: "{{ server_image }}"
+    server_type: "{{ server_type }}"
+    user_data: "{{ server_user_data }}"
+    location: "{{ server_location }}"
+    ssh_keys: "{{ server_ssh_key_names|default(omit) }}"

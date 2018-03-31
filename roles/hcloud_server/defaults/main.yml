@@ -1,0 +1,6 @@
+server_image: debian-9
+server_location: "{{ ['fsn1', 'nbg1'] | random(seed=inventory_hostname) }}"
+server_name: "{{ inventory_hostname }}"
+server_state: running
+server_type: cx11
+server_user_data: "{{ lookup('template', 'user-data.txt') }}"

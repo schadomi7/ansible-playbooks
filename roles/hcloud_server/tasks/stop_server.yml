@@ -1,0 +1,5 @@
+- name: stop server
+  local_action:
+    module: hcloud_server
+    name: "{{ server_name }}"
+    state: stopped

@@ -1,0 +1,14 @@
+#cloud-config
+
+users:
+- name: {{ server_user_name|mandatory }}
+  sudo: ALL=(ALL) ALL
+  passwd: {{ server_user_password|mandatory }}
+  lock_passwd: no
+  {% if server_user_ssh_keys is defined -%}
+  ssh-authorized-keys:
+    {%- for ssh_key in server_user_ssh_keys %}
+
+    - {{ ssh_key }}
+    {%- endfor -%}
+  {% endif %}

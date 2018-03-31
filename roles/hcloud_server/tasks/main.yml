@@ -1,0 +1,28 @@
+- assert:
+    that:
+    - server_state in ['present', 'running', 'stopped', 'restarted']
+
+- name: start server
+  when: (hostvars[inventory_hostname]|default()).hcloud_id is defined and server_state in ['running'] and hcloud_status != 'running'
+  include_tasks: start_server.yml
+
+- name: restart server
+  when: (hostvars[inventory_hostname]|default()).hcloud_id is defined and server_state in ['restarted']
+  include_tasks: restart_server.yml
+
+- name: stop server
+  when: (hostvars[inventory_hostname]|default()).hcloud_id is defined and server_state in ['stopped'] and hcloud_status != 'off'
+  include_tasks: stop_server.yml
+
+- name: create server
+  when: (hostvars[inventory_hostname]|default()).hcloud_id is not defined and server_state in ['present', 'running', 'stopped', 'restarted']
+  include_tasks: create_server.yml
+
+  # Refresh inventory for hcloud_status to update
+- meta: refresh_inventory
+
+- name: wait until the remote machine is reachable
+  wait_for_connection:
+    timeout: 180
+  failed_when: False
+  when: (hostvars[inventory_hostname]|default()).hcloud_id is defined and server_state in ['present', 'running', 'restarted'] and hcloud_status == 'running'
