@@ -1,0 +1,2 @@
+- src: https://github.com/thelegy/ansible-nftables
+  name: nftables

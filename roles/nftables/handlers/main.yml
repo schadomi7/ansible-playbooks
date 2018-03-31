@@ -1,2 +1,0 @@
-- name: reload nftables
-  include_tasks: reload_nftables.yml
