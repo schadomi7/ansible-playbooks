@@ -1,5 +1,6 @@
 {{ ansible_managed|comment }}
 
+delete element inet filter tcp_dport_verdict { ssh  }
 
 table inet filter {
   set bad_sshd_ipv4 {

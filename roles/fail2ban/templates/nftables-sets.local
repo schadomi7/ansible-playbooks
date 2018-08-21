@@ -10,13 +10,13 @@ after = nftables-sets.conf
 # Notes.:  command executed once at the start of Fail2Ban.
 # Values:  CMD
 #
-actionstart = systemctl reload nftables.service
+actionstart =
 
 # Option:  actionstop
 # Notes.:  command executed once at the end of Fail2Ban
 # Values:  CMD
 #
-actionstop = <actionstart>
+actionstop =
 
 # Option:  actioncheck
 # Notes.:  command executed once before each actionban command
