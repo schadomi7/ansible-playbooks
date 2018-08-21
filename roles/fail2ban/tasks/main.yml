@@ -1,59 +1,76 @@
-- name: ensure fail2ban is installed
-  git:
-    repo: https://github.com/fail2ban/fail2ban.git
-    dest: /opt/fail2ban
-    version: "0.11"
-  become: yes
-  notify: source_install_fail2ban
+- block:
 
-- name: ensure fail2ban dependencies are installed
-  package:
-    pkg: "{{ item }}"
-  become: yes
-  notify: source_install_fail2ban
-  with_items:
-    - gamin
-    - python-gamin
+  - name: ensure fail2ban is installed
+    git:
+      repo: https://github.com/fail2ban/fail2ban.git
+      dest: /opt/fail2ban
+      version: "0.11"
+    notify: source_install_fail2ban
 
-- name: ensure fail2ban service file is up to date
-  template:
-    src: fail2ban.service
-    dest: /etc/systemd/system/fail2ban.service
-  become: yes
-  register: fail2ban_servicefile
+  - name: ensure systemd python bindings are installed
+    package:
+      pkg: python-systemd
+    ignore_errors: yes
+    notify: source_install_fail2ban
 
-- name: reload systemctl daemon
-  systemd:
-    daemon_reload: yes
-  become: yes
-  when: fail2ban_servicefile is changed
+  - name: ensure fail2ban dependency gamin is installed
+    package:
+      pkg: gamin
+    notify: source_install_fail2ban
 
-- meta: flush_handlers
+  - name: ensure gamin python bindings are installed
+    package:
+      pkg: python-gamin
+    ignore_errors: yes
+    notify: source_install_fail2ban
 
-- name: ensure fail2ban.local is up to date
-  template:
-    src: fail2ban.local
-    dest: /etc/fail2ban/fail2ban.local
-  become: yes
-  notify: reload fail2ban
+  - name: ensure fail2ban service file are up to date
+    template:
+      src: fail2ban.service
+      dest: /etc/systemd/system/fail2ban.service
+    register: fail2ban_servicefile
 
-- name: ensure nftables-sets action is up to date
-  template:
-    src: nftables-sets.local
-    dest: /etc/fail2ban/action.d/nftables-sets.local
-  become: yes
-  notify: reload fail2ban
+  - name: reload systemctl daemon
+    systemd:
+      daemon_reload: yes
+    when: fail2ban_servicefile is changed
 
-- name: ensure customisation.local is up to date
-  template:
-    src: customisation.local
-    dest: /etc/fail2ban/jail.d/customisation.local
-  become: yes
-  notify: reload fail2ban
+  - meta: flush_handlers
 
-- name: ensure fail2ban gets started
-  service:
-    name: fail2ban
-    state: started
-    enabled: yes
+  - name: ensure fail2ban.local is up to date
+    template:
+      src: fail2ban.local
+      dest: /etc/fail2ban/fail2ban.local
+    notify: reload fail2ban
+
+  - name: ensure nftables-sets action is up to date
+    template:
+      src: nftables-sets.local
+      dest: /etc/fail2ban/action.d/nftables-sets.local
+    notify: reload fail2ban
+
+  - name: ensure customisation.local is up to date
+    template:
+      src: customisation.local
+      dest: /etc/fail2ban/jail.d/customisation.local
+    notify: reload fail2ban
+
+  - name: ensure fail2ban uses the arch-specific paths
+    lineinfile:
+      path: /etc/fail2ban/jail.conf
+      line: before = paths-arch.conf
+      regexp: ^#?\s*before\s*=\s*paths-
+    notify: reload fail2ban
+    when: ansible_os_family == 'Archlinux'
+
+  - name: ensure fail2ban gets started
+    service:
+      name: fail2ban
+      state: started
+      enabled: yes
+
   become: yes
+  tags:
+  - fail2ban
+  - f2b
+  - firewall

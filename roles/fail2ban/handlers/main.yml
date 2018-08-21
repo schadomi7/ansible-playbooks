@@ -1,5 +1,5 @@
 - name: install fail2ban from source
-  shell: python setup.py install
+  command: python setup.py install --install-script /usr/local/bin
   args:
     chdir: /opt/fail2ban/
   become: yes

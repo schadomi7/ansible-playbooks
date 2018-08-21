@@ -51,20 +51,24 @@ nftables = nft
 # Values:  STRING  Default: filter
 nftables_table = filter
 
+[Init?family=inet4]
 # Option: nftables_ipversionname
 # Notes.: name of the ip version
 # Values: [ ipv4 | ipv6 ] Default: "ipv4" for IPv4 and "ipv6" for IPv6
-[Init?family=inet4]
 nftables_ipversionname = ipv4
-[Init?family=inet6]
-nftables_ipversionname = ipv6
-[Init]
 
 # Option:  nftables_blockcider
 # Notes.:  cider to quantify the blocking range
 # Values:  INTEGER Default: 32 for IPv4 and 64 for IPv6
-[Init?family=inet4]
 nftables_blockcider = 32
+
 [Init?family=inet6]
+# Option: nftables_ipversionname
+# Notes.: name of the ip version
+# Values: [ ipv4 | ipv6 ] Default: "ipv4" for IPv4 and "ipv6" for IPv6
+nftables_ipversionname = ipv6
+
+# Option:  nftables_blockcider
+# Notes.:  cider to quantify the blocking range
+# Values:  INTEGER Default: 32 for IPv4 and 64 for IPv6
 nftables_blockcider = 64
-[Init]
