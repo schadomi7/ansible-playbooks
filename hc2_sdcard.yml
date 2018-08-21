@@ -1,0 +1,99 @@
+- hosts: localhost
+
+  gather_facts: no
+
+  vars:
+    alarm_filepath: /tmp/hc2_alarm_latest.tar.gz
+    alarm_url: http://os.archlinuxarm.org/os/ArchLinuxARM-odroid-xu3-latest.tar.gz
+    ssh_keys: "{{users.beinke.ssh_keys}}"
+
+  vars_prompt:
+  - name: sdcard
+    prompt: |
+      Tell me the path to the sdcard to provision.
+      You will loose all data on this.
+    private: no
+
+  tasks:
+
+  - pause:
+      prompt: Is "{{sdcard}}" correct? [Yes|No]
+    register: confirm
+    failed_when: confirm.user_input.lower() not in ["yes"]
+    when: noconfirm|default("no") not in ["yes"]
+
+  - name: Empty out the first regions of the sd card
+    command: dd if=/dev/zero of="{{sdcard}}" bs=1M count=8
+    become: yes
+
+  - name: Create the proper partition table
+    shell:
+      cmd: |
+        sfdisk "{{sdcard}}" <<EOF
+        label: dos
+
+        start=4096, type=83
+        EOF
+    become: yes
+
+  - name: Create the proper filesystem
+    command: mkfs.ext4 "{{sdcard}}1"
+    become: yes
+
+  - name: Create temporary mount point directory
+    tempfile:
+      state: directory
+      prefix: hc2-
+      suffix: -mountpoint
+    register: mount_point
+
+  - name: Mount the sdcard to the dircetory
+    command: mount "{{sdcard}}1" "{{mount_point.path}}"
+    args:
+      warn: no
+    become: yes
+
+  - name: Download the ArchLinux ARM image
+    get_url:
+      url: "{{alarm_url}}"
+      dest: "{{alarm_filepath}}"
+
+  - name: Untar the ArchLinux ARM image
+    unarchive:
+      src: "{{alarm_filepath}}"
+      dest: "{{mount_point.path}}"
+      remote_src: yes
+    become: yes
+
+  - name: Ensure authorized ssh keys for alarm user are present
+    blockinfile:
+      block: "
+      {%- for key in ssh_keys %}
+      {{- key }}
+
+      {% endfor %}"
+      create: yes
+      path: "{{mount_point.path}}/home/alarm/.ssh/authorized_keys"
+    become: yes
+
+  - name: Ensure ssh password authentication is disabled
+    lineinfile:
+      path: "{{mount_point.path}}/etc/ssh/sshd_config"
+      line: PasswordAuthentication no
+      regexp: '^#?\s*PasswordAuthentication\s+(yes|no)'
+    become: yes
+
+  - name: Fuse the sdcard
+    command: sh sd_fusing.sh "{{sdcard}}"
+    args:
+      chdir: "{{mount_point.path}}/boot"
+    become: yes
+
+  - name: Unmount the sdcard
+    command: umount "{{mount_point.path}}"
+    become: yes
+
+  - name: Remove the mount point directory
+    file:
+      dest: "{{mount_point.path}}"
+      state: absent
