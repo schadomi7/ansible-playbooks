@@ -16,7 +16,7 @@
     password: "{{ user_password|default(omit) }}"
   become: yes
 
-- name: ensure authorized ssh keys for user "{{ user_name|mandatory }}" is present
+- name: ensure authorized ssh keys for user "{{ user_name|mandatory }}" are present
   authorized_key:
     exclusive: yes
     key: "
