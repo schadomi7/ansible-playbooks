@@ -3,7 +3,7 @@
   gather_facts: no
 
   vars_prompt:
-  - name: hc2_address
+  - name: hc2_addresses
     prompt: Please enter the address of the hc2 device to bootstrap
     private: no
 
@@ -11,10 +11,40 @@
 
   - name: Add the host to a dynamic group
     add_host:
-      hostname: "{{hc2_address}}"
+      hostname: "{{ hc2_address }}"
       groups:
       - hc2_bootstrap_target
+    loop_control:
+      loop_var: hc2_address
+    loop: "{{ hc2_addresses.split(',') }}"
+    changed_when: no
     tags: always
+
+
+- hosts: hc2_bootstrap_target
+
+  gather_facts: no
+
+  tasks:
+
+  - block:
+
+    - name: Test connection with the real user
+      wait_for_connection:
+        sleep: 2.5
+        timeout: 2.5
+
+    - name: Test sudo privileges with the real user
+      command: whoami
+      changed_when: no
+      become: yes
+
+    rescue:
+
+    - name: Mark initial setup to be executed
+      set_fact:
+        cacheable: no
+        initial_setup_needed: yes
 
 
 - hosts: hc2_bootstrap_target
@@ -28,28 +58,15 @@
 
   pre_tasks:
 
-  - name: Test if alarm credentials are still present
-    wait_for_connection:
-      sleep: 2.5
-      timeout: 2.5
-    ignore_errors: yes
-    register: try_alarm_user
-    failed_when: try_alarm_user.failed and 'Permission denied (publickey)' in try_alarm_user.msg
-
-  - name: Exit early because the alarm user is gone
+  - name: Exit early because the real login already works properly
     meta: end_play
-    when: try_alarm_user is not defined or try_alarm_user is failed
+    when: not initial_setup_needed|default(False)
 
   - block:
 
     - name: Initialize the pacman-keys
       raw: pacman-key --init
       ignore_errors: yes
-      register: first_alarm_user_su_command
-
-    - name: Exit early because the alarm -> su route is already closed
-      meta: end_play
-      when: first_alarm_user_su_command is failed
 
     - name: Add the ArchLinuxArm keys to the pacman-keys
       raw: pacman-key --populate archlinuxarm
@@ -81,9 +98,6 @@
 - hosts: hc2_bootstrap_target
 
   pre_tasks:
-
-  - name: Earlier errors do not need to affect this
-    meta: clear_host_errors
 
   - block:
 
