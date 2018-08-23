@@ -1,23 +1,26 @@
----
-- name: ensure sudo is installed
-  package:
-    name: sudo
-    state: present
-  become: yes
+- block:
 
-- name: ensure wheel group exists
-  group:
-    name: wheel
-    system: yes
-  become: yes
+  - name: ensure sudo is installed
+    package:
+      name: sudo
+      state: present
 
-- name: ensure sudoers file is up to date
-  template:
-    src: sudoers
-    dest: /etc/sudoers
-    backup: yes
-    validate: '/usr/sbin/visudo -cf %s'
-    owner: root
-    group: root
-    mode: 644
+  - name: ensure wheel group exists
+    group:
+      name: wheel
+      system: yes
+
+  - name: ensure sudoers file is up to date
+    template:
+      src: sudoers
+      dest: /etc/sudoers
+      backup: yes
+      validate: '/usr/sbin/visudo -cf %s'
+      owner: root
+      group: root
+      mode: 644
+
   become: yes
+  tags:
+  - sudo
+  - credentials
