@@ -144,3 +144,19 @@
     user_sudo: "{{ users.beinke.sudo }}"
 
   - role: ssh-server
+
+  tasks:
+
+  - block:
+
+    - name: Install some misc managment tools
+      package:
+        name: "{{ package }}"
+      loop_control:
+        loop_var: package
+      loop:
+      - hdparm
+      - htop
+      - smartmontools
+
+    become: yes
