@@ -1,29 +1,33 @@
-- name: ensure zsh is installed
-  package:
-    name: zsh
-    state: present
-  ignore_errors: yes
-  register: zsh_installed
-  become: yes
+- block:
 
-- name: ensure user "{{ user_name|mandatory }}" is present
-  user:
-    append: yes
-    name: "{{ user_name }}"
-    createhome: yes
-    shell: "{{ '/bin/zsh' if zsh_installed is succeeded else omit }}"
-    groups: "{{ 'wheel' if user_sudo|default(False) else omit }}"
-    password: "{{ user_password|default(omit) }}"
-  become: yes
+  - name: ensure zsh is installed
+    package:
+      name: zsh
+      state: present
+    ignore_errors: yes
+    register: zsh_installed
 
-- name: ensure authorized ssh keys for user "{{ user_name|mandatory }}" are present
-  authorized_key:
-    exclusive: yes
-    key: "
-    {%- for key in user_ssh_keys %}
-    {{- key }}
+  - name: ensure user "{{ user_name|mandatory }}" is present
+    user:
+      append: yes
+      name: "{{ user_name }}"
+      createhome: yes
+      shell: "{{ '/bin/zsh' if zsh_installed is succeeded else omit }}"
+      groups: "{{ 'wheel' if user_sudo|default(False) else omit }}"
+      password: "{{ user_password|default(omit) }}"
 
-    {% endfor %}"
-    user: "{{ user_name|mandatory }}"
+  - name: ensure authorized ssh keys for user "{{ user_name|mandatory }}" are present
+    authorized_key:
+      exclusive: yes
+      key: "
+      {%- for key in user_ssh_keys %}
+      {{- key }}
+
+      {% endfor %}"
+      user: "{{ user_name|mandatory }}"
+    when: user_ssh_keys is defined
+
   become: yes
-  when: user_ssh_keys is defined
+  tags:
+  - user
+  - credentials
