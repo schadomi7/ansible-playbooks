@@ -4,7 +4,7 @@
 
   vars:
     alarm_filepath: /tmp/hc2_alarm_latest.tar.gz
-    alarm_url: http://os.archlinuxarm.org/os/ArchLinuxARM-odroid-xu3-latest.tar.gz
+    alarm_url: https://archlinuxarm.org/os/ArchLinuxARM-odroid-xu3-latest.tar.gz
     ssh_keys: "{{users.beinke.ssh_keys}}"
 
   vars_prompt:
@@ -57,6 +57,8 @@
     get_url:
       url: "{{alarm_url}}"
       dest: "{{alarm_filepath}}"
+
+  # TODO: verify ArchLinux ARM image
 
   - name: Untar the ArchLinux ARM image
     unarchive:
