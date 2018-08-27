@@ -42,12 +42,12 @@
     rescue:
 
     - name: Mark initial setup to be executed
-      set_fact:
-        cacheable: no
-        initial_setup_needed: yes
+      add_host:
+        hostname: "{{ inventory_hostname }}"
+        groups: hc2_bootstrap_need_inital_setup
 
 
-- hosts: hc2_bootstrap_target
+- hosts: hc2_bootstrap_need_inital_setup
 
   gather_facts: no
   become_method: su
@@ -57,10 +57,6 @@
     ansible_become_pass: root
 
   pre_tasks:
-
-  - name: Exit early because the real login already works properly
-    meta: end_play
-    when: not initial_setup_needed|default(False)
 
   - block:
 
