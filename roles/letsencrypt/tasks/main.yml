@@ -1,0 +1,70 @@
+- block:
+
+
+  - name: Ensure the certbot is present on Debian Stretch
+    apt:
+      name: certbot
+      default_release: stretch-backports
+      state: present
+    when: ansible_distribution == "Debian" and ansible_distribution_release == "stretch"
+
+  - name: Ensure the certbot is present on other systems
+    package:
+      name: certbot
+      state: present
+    when:
+    - ansible_distribution != "Debian" or ansible_distribution_release != "stretch"
+
+  - name: Ensure the certbot cli configuration is up to date
+    template:
+      src: cli.ini
+      dest: /etc/letsencrypt/cli.ini
+      backup: yes
+    notify: certbot
+
+  - name: Ensure the letsencrypt run script is present
+    template:
+      src: letsencrypt_run.sh
+      dest: /usr/local/sbin/letsencrypt_run
+      mode: a+rx
+    notify: certbot
+
+  - meta: flush_handlers
+
+  - name: Ensure the packaged crontab is gone
+    file:
+      path: /etc/cron.d/certbot
+      state: absent
+
+  - name: Ensure the letsencrypt crontab env variable PATH is present
+    cron:
+      cron_file: letsencrypt
+      user: root
+      env: yes
+      name: PATH
+      value: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+  - name: Ensure the letsencrypt crontab env variable MAILTO is present
+    cron:
+      cron_file: letsencrypt
+      user: root
+      env: yes
+      name: MAILTO
+      value: "{{ letsencrypt_email|mandatory }}"
+
+  - name: Ensure the letsencrypt crontab job is present
+    cron:
+      cron_file: letsencrypt
+      user: root
+      name: letsencrypt
+      hour: "{{ letsencrypt_cron_hour }}"
+      minute: "{{ letsencrypt_cron_minute }}"
+      weekday: "{{ letsencrypt_cron_weekday }}"
+      job: letsencrypt_run
+
+
+  become: yes
+  tags:
+  - letsencrypt
+  - certificate
+  - cert
