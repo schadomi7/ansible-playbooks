@@ -336,3 +336,25 @@
     user_password: "{{ users.beinke.password }}"
     user_ssh_keys: "{{ users.beinke.ssh_keys }}"
     user_sudo: "{{ users.beinke.sudo }}"
+
+
+- hosts: localhost
+
+  gather_facts: no
+
+  tasks:
+
+  - name: unmount temporary api filesystems
+    shell:
+      cmd: |
+        umount {{ (root_mountpoint+'/proc/')|quote }} ; \
+        umount {{ (root_mountpoint+'/sys/')|quote }} ; \
+        umount {{ (root_mountpoint+'/dev/')|quote }} ; \
+        umount {{ (root_mountpoint+'/sys/firmware/efi/efivars')|quote }} ; \
+        umount {{ (root_mountpoint+'/etc/resolv.conf')|quote }} ; \
+        true
+    args:
+      warn: no
+    changed_when: no
+    tags:
+    - unmount
