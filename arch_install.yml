@@ -38,7 +38,7 @@
     prompt: Tell me the encryption passphrase you intend to use
     private: yes
 
-  - name: hostname
+  - name: host_name
     prompt: Tell me the hostname of the machine
     private: no
 
@@ -47,7 +47,7 @@
   - name: confirm the proper disk will be used
     pause:
       prompt: |
-        {{ lookup('pipe', 'fdisk -l ' + install_disk) }}\n\n
+        {{ lookup('pipe', 'fdisk -l ' + install_disk) }}
 
         Continuing will WIPE this DISK, so double check! Is this correct? [yes/No]
     register: confirm_disk
@@ -201,7 +201,7 @@
       group: local_chroot
       timezone_region: "{{ timezone_region }}"
       timezone_city: "{{ timezone_city }}"
-      hostname: "{{ hostname }}"
+      host_name: "{{ host_name }}"
       locales: "{{ locales }}"
       lang: "{{ lang }}"
       keymap: "{{ keymap }}"
@@ -235,7 +235,7 @@
 
   - name: ensure the /etc/hostname is set properly
     copy:
-      content: "{{ hostname }}"
+      content: "{{ host_name }}"
       dest: /etc/hostname
 
   - name: ensure the timezone is set properly
@@ -274,8 +274,8 @@
 
         127.0.0.1           localhost
         ::1                 localhost
-        127.0.1.1           {{ hostname }}.localdomain {{ hostname }}
-        ::1                 {{ hostname }}.localdomain {{ hostname }}
+        127.0.1.1           {{ host_name }}.localdomain {{ host_name }}
+        ::1                 {{ host_name }}.localdomain {{ host_name }}
       dest: /etc/hosts
 
   - name: ensure the micokernel update file is installed
