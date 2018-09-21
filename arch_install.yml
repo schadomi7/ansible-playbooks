@@ -1,0 +1,338 @@
+- hosts: localhost
+
+  gather_facts: no
+
+  vars:
+    luks_container_name: ARCH
+    lvm_volgroup_name: ARCH
+    swap_size: 16G
+    swap_name: swap
+    root_name: root
+
+    root_mountpoint: /mnt
+
+    timezone_region: Europe
+    timezone_city: Berlin
+
+    locales:
+    - en_US.UTF-8 UTF-8
+    - de_DE.UTF-8 UTF-8
+
+    lang: en_US.UTF-8
+    keymap: de-latin1-nodeadkeys
+
+    ucode: intel
+
+    partlist_output: {}  # dummy; will be filled later
+    part_efi: "{{ partlist_output.stdout_lines[0] }}"
+    part_crypt: "{{ partlist_output.stdout_lines[1] }}"
+
+  vars_prompt:
+  - name: install_disk
+    prompt: |
+      Tell me the path to the disk to install arch on.
+      You will loose all data on that disk!
+    private: no
+
+  - name: encryption_passphrase
+    prompt: Tell me the encryption passphrase you intend to use
+    private: yes
+
+  - name: hostname
+    prompt: Tell me the hostname of the machine
+    private: no
+
+  tasks:
+
+  - name: confirm the proper disk will be used
+    pause:
+      prompt: |
+        {{ lookup('pipe', 'fdisk -l ' + install_disk) }}\n\n
+
+        Continuing will WIPE this DISK, so double check! Is this correct? [yes/No]
+    register: confirm_disk
+    failed_when: confirm_disk.user_input.lower() not in ["yes"]
+    when: noconfirm|default("no") not in ["yes"]
+
+  - block:
+
+    - name: Empty out the first regions of the disk
+      command: dd if=/dev/zero of="{{ install_disk }}" bs=1M count=8
+
+    - name: Create the proper partition table
+      shell:
+        cmd: |
+          sfdisk "{{ install_disk }}" <<EOF
+          label: gpt
+
+          size=512MiB, type=1
+          type=20
+
+          EOF
+
+    become: yes
+    tags:
+    - preinstall
+    - partition
+
+  - name: get paths to the partitions
+    shell:
+      cmd: lsblk -pnlo name,type {{ install_disk }} | egrep ' part$' | cut -f1 -d ' '
+    changed_when: no
+    register: partlist_output
+    tags:
+    - always
+
+  - block:
+
+    - pause:
+        prompt: Please REenter the encryption passphrase
+        echo: no
+      register: passphrase_reenter
+      failed_when: passphrase_reenter.user_input != encryption_passphrase
+      when: noconfirm|default("no") not in ["yes"]
+
+    - name: create the encrypted partition
+      shell:
+        cmd: (echo {{ encryption_passphrase|quote }}; echo {{ encryption_passphrase|quote }}) | cryptsetup luksFormat --type luks2  {{ part_crypt|quote }}
+    become: yes
+
+    tags:
+    - preinstall
+    - create_luks
+    - luks
+
+  - name: open the encrypted partition
+    shell:
+      cmd: echo {{ encryption_passphrase|quote }} | cryptsetup open {{ part_crypt|quote }} {{ luks_container_name|quote }}
+    register: open_luks
+    failed_when: open_luks.failed and 'Device '+luks_container_name+' already exists.' not in open_luks.stderr
+    changed_when: "'Device '+luks_container_name+' already exists.' not in open_luks.stderr"
+    become: yes
+    tags:
+    - always
+
+  - block:
+
+    - name: create physical lvm volume
+      command: pvcreate {{ ('/dev/mapper/'+luks_container_name)|quote }}
+
+    - name: create lvm volume group
+      command: vgcreate {{ lvm_volgroup_name|quote }} {{ ('/dev/mapper/'+luks_container_name)|quote }}
+
+    - name: create the swap volume
+      command: lvcreate -L {{ swap_size|quote }} {{ lvm_volgroup_name|quote }} -n swap
+
+    - name: create the root volume
+      command: lvcreate -l 100%FREE {{ lvm_volgroup_name|quote }} -n root
+
+    become: yes
+    tags:
+    - preinstall
+    - lvm
+
+  - block:
+
+    - name: create the efi fs
+      command: mkfs.fat -F32 {{ part_efi|quote }}
+
+    - name: create the root fs
+      command: mkfs.btrfs -L {{ root_name|quote }} {{ ('/dev/'+lvm_volgroup_name+'/root')|quote }}
+
+    - name: create the swap
+      command: mkswap -L {{ swap_name|quote }} {{ ('/dev/'+lvm_volgroup_name+'/swap')|quote }}
+
+    become: yes
+    tags:
+    - preinstall
+    - create_fs
+
+  - block:
+
+    - name: enable swap
+      command: swapon {{ ('/dev/'+lvm_volgroup_name+'/swap')|quote }}
+      register: enable_swap
+      ignore_errors: yes
+      failed_when: enable_swap.failed and 'Device or resource busy' not in enable_swap.stderr
+      changed_when: "'Device or resource busy' not in enable_swap.stderr"
+
+    - name: mount root fs
+      command: mount {{ ('/dev/'+lvm_volgroup_name+'/root')|quote }} {{ root_mountpoint|quote }}
+      args:
+        warn: no
+      register: mount_root
+      failed_when: mount_root.failed and ' /dev/mapper/'+lvm_volgroup_name+'-root already mounted on '+root_mountpoint+'.' not in mount_root.stderr
+      changed_when: "' /dev/mapper/'+lvm_volgroup_name+'-root already mounted on '+root_mountpoint+'.' not in mount_root.stderr"
+
+    - name: ensure the boot mountpoint is present
+      file:
+        state: directory
+        dest: "{{ (root_mountpoint+'/boot')|quote }}"
+
+    - name: mount efi fs
+      command: mount {{ part_efi|quote }} {{ (root_mountpoint+'/boot')|quote }}
+      args:
+        warn: no
+      register: mount_boot
+      failed_when: mount_root.failed and ' '+part_efi+' already mounted on '+root_mountpoint+'/boot.' not in mount_boot.stderr
+      changed_when: "' '+part_efi+' already mounted on '+root_mountpoint+'/boot.' not in mount_boot.stderr"
+
+    - name: mount temporary api filesystems
+      shell:
+        cmd: |
+          mount -t proc /proc {{ (root_mountpoint+'/proc/')|quote }} ; \
+          mount -o bind /sys  {{ (root_mountpoint+'/sys/')|quote }} ; \
+          mount -o bind /dev  {{ (root_mountpoint+'/dev/')|quote }} ; \
+          mount -t efivarfs -o nosuid,noexec,nodev efivarfs {{ (root_mountpoint+'/sys/firmware/efi/efivars')|quote }} ; \
+          mount -o bind /etc/resolv.conf {{ (root_mountpoint+'/etc/resolv.conf')|quote }} ; \
+          true
+      args:
+        warn: no
+      changed_when: no
+
+    become: yes
+    tags:
+    - mount
+
+  - name: ensure the chroot is targetable
+    add_host:
+      ansible_connection: chroot
+      name: "{{ root_mountpoint }}"
+      group: local_chroot
+      timezone_region: "{{ timezone_region }}"
+      timezone_city: "{{ timezone_city }}"
+      hostname: "{{ hostname }}"
+      locales: "{{ locales }}"
+      lang: "{{ lang }}"
+      keymap: "{{ keymap }}"
+      ucode: "{{ ucode }}"
+      lvm_volgroup_name: "{{ lvm_volgroup_name }}"
+      part_crypt: "{{ part_crypt }}"
+    changed_when: no
+    tags:
+    - always
+
+  - name: install base system
+    command: pacstrap {{ root_mountpoint|quote }} base base-devel python
+    become: yes
+    tags:
+    - install
+    - pacstrap
+
+  - name: generate the fstab
+    shell:
+      cmd: genfstab -U {{ root_mountpoint|quote }} {{ (root_mountpoint+'/etc/fstab')|quote }}
+    tags:
+    - install
+    - fstab
+
+
+- hosts: local_chroot
+
+  gather_facts: no
+
+  tasks:
+
+  - name: ensure the /etc/hostname is set properly
+    copy:
+      content: "{{ hostname }}"
+      dest: /etc/hostname
+
+  - name: ensure the timezone is set properly
+    file:
+      state: link
+      src: /usr/share/zoneinfo/{{ timezone_region }}/{{ timezone_city}}
+      dest: /etc/localtime
+
+  - name: ensure the locale.gen is up to date
+    lineinfile:
+      line: "{{ locale }}"
+      dest: /etc/locale.gen
+      regexp: ^#?\s?{{ locale|regex_escape }}
+    loop_control:
+      loop_var: locale
+    loop: "{{ locales }}"
+
+  - name: generate the selected locales
+    command: locale-gen
+
+  - name: ensure the locale.conf is up to date
+    copy:
+      content: LANG={{ lang }}
+      dest: /etc/locale.conf
+
+  - name: ensure the keyboard config is up to date
+    copy:
+      content: KEYMAP={{ keymap }}
+      dest: /etc/vconsole.conf
+
+  - name: ensure the hosts file is up to date
+    copy:
+      content: |
+        # Static table lookup for hostnames.
+        # See hosts(5) for details.
+
+        127.0.0.1           localhost
+        ::1                 localhost
+        127.0.1.1           {{ hostname }}.localdomain {{ hostname }}
+        ::1                 {{ hostname }}.localdomain {{ hostname }}
+      dest: /etc/hosts
+
+  - name: ensure the micokernel update file is installed
+    pacman:
+      update_cache: yes
+      name: "{{ ucode }}-ucode"
+
+  - name: ensure the btrfs helpers are installed
+    pacman:
+      update_cache: yes
+      name: btrfs-progs
+
+  - name: ensure the efibootmgr in installed
+    pacman:
+      update_cache: yes
+      name: efibootmgr
+
+  - name: ensure the mkinitcpio is configured for an encrypted root partition
+    lineinfile:
+      line: HOOKS=(base udev autodetect modconf block keyboard keymap encrypt lvm2 filesystems fsck shutdown)
+      regexp: ^HOOKS=
+      dest: /etc/mkinitcpio.conf
+
+  - name: generate the initramfs
+    command: mkinitcpio -p linux
+
+  - name: install systemd-boot
+    command: bootctl --path=/boot install
+    ignore_errors: yes
+
+  - name: ensure a systemd-boot config is present
+    copy:
+      content: |
+        default  arch
+        timeout  4
+        editor   no
+      dest: /boot/loader/loader.conf
+
+  - name: add a first boot entry
+    copy:
+      content: |
+        title   Arch Linux
+        linux   /vmlinuz-linux
+        initrd  /intel-ucode.img
+        initrd  /initramfs-linux.img
+        options root=LABEL=arch_os rw
+        options root=UUID={{ lookup('pipe', 'lsblk -no uuid /dev/mapper/'+lvm_volgroup_name+'-root') }} rw cryptdevice=UUID={{ lookup('pipe', 'lsblk -no uuid '+part_crypt+' | head -n1') }}:cryptolvm
+      dest: /boot/loader/entries/arch.conf
+
+  - name: add some packets that will come handy later
+    pacman:
+      update_cache: yes
+      name: ansible git inxi
+
+  roles:
+  - role: user
+    user_name: beinke
+    user_password: "{{ users.beinke.password }}"
+    user_ssh_keys: "{{ users.beinke.ssh_keys }}"
+    user_sudo: "{{ users.beinke.sudo }}"
