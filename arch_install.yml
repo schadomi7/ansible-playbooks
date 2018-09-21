@@ -328,7 +328,7 @@
   - name: add some packets that will come handy later
     pacman:
       update_cache: yes
-      name: ansible git inxi
+      name: ansible git
 
   roles:
   - role: user
