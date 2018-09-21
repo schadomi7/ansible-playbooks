@@ -186,22 +186,6 @@
     tags:
     - mount
 
-  - name: mount temporary api filesystems
-    shell:
-      cmd: |
-        mount -t proc /proc {{ (root_mountpoint+'/proc/')|quote }} ; \
-        mount -o bind /sys  {{ (root_mountpoint+'/sys/')|quote }} ; \
-        mount -o bind /dev  {{ (root_mountpoint+'/dev/')|quote }} ; \
-        mount -t efivarfs -o nosuid,noexec,nodev efivarfs {{ (root_mountpoint+'/sys/firmware/efi/efivars')|quote }} ; \
-        mount -o bind /etc/resolv.conf {{ (root_mountpoint+'/etc/resolv.conf')|quote }} ; \
-        true
-    args:
-      warn: no
-    changed_when: no
-    become: yes
-    tags:
-    - mount_api
-
   - name: ensure the chroot is targetable
     add_host:
       ansible_connection: chroot
@@ -233,6 +217,22 @@
     tags:
     - install
     - fstab
+
+  - name: mount temporary api filesystems
+    shell:
+      cmd: |
+        mount -t proc /proc {{ (root_mountpoint+'/proc/')|quote }} ; \
+        mount -o bind /sys  {{ (root_mountpoint+'/sys/')|quote }} ; \
+        mount -o bind /dev  {{ (root_mountpoint+'/dev/')|quote }} ; \
+        mount -t efivarfs -o nosuid,noexec,nodev efivarfs {{ (root_mountpoint+'/sys/firmware/efi/efivars')|quote }} ; \
+        mount -o bind /etc/resolv.conf {{ (root_mountpoint+'/etc/resolv.conf')|quote }} ; \
+        true
+    args:
+      warn: no
+    changed_when: no
+    become: yes
+    tags:
+    - mount_api
 
 
 - hosts: local_chroot
