@@ -213,7 +213,7 @@
 
   - name: generate the fstab
     shell:
-      cmd: genfstab -U {{ root_mountpoint|quote }} {{ (root_mountpoint+'/etc/fstab')|quote }}
+      cmd: genfstab -U {{ root_mountpoint|quote }} >> {{ (root_mountpoint+'/etc/fstab')|quote }}
     tags:
     - install
     - fstab
@@ -336,7 +336,7 @@
   - name: add some packets that will come handy later
     pacman:
       update_cache: yes
-      name: ansible git
+      name: ansible git openssh sshfs rxvt-unicode-terminfo
 
   roles:
   - role: user
