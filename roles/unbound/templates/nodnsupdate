@@ -1,0 +1,7 @@
+{{ ansible_managed|comment }}
+
+
+# This is to ensure dhcliend does not touch the resolv.conf
+make_resolv_conf() {
+  :
+}

@@ -1,0 +1,5 @@
+- name: reload rspamd
+  service:
+    name: rspamd
+    state: reloaded
+  become: yes

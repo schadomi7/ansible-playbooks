@@ -1,0 +1,8 @@
+- name: reload postfix
+  service:
+    name: postfix
+    state: reloaded
+  listen:
+  - reload mta
+  - reload postfix
+  become: yes

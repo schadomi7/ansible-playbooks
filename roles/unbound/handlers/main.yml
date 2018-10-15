@@ -1,0 +1,5 @@
+- name: reload unbound
+  service:
+    name: unbound.service
+    state: reloaded
+  become: yes

@@ -1,0 +1,34 @@
+{{ ansible_managed|comment }}
+
+
+{% set imap_max_rate = '10/hour' %}
+{% set imap_max_rate_reset = '5m' %}
+
+
+table inet filter {
+
+
+  chain imap {
+    # Ratelimit ipv4 traffic per source ip
+    flow table ipv4-meter-imap-ratelimit {ip saddr timeout {{ imap_max_rate_reset }} limit rate over {{ imap_max_rate }}} counter drop;
+
+    # Ratelimit ipv6 traffic per /64 subnet
+    flow table ipv6-meter-imap-ratelimit {ip6 saddr and FFFF:FFFF:FFFF:FFFF:: timeout {{ imap_max_rate_reset }} limit rate over {{ imap_max_rate }}} counter drop;
+
+    # Accept everything that was not limited
+    accept;
+  }
+
+  chain sieve {
+
+    # Accept everything for the moment
+    accept;
+
+  }
+
+  # Add the imap chain for new connections with dport imap
+  map tcp_dport_verdict {
+    type inet_service : verdict;
+    elements = { imap : jump imap, sieve: jump sieve };
+  }
+}

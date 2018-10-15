@@ -1,0 +1,5 @@
+- name: reload mda
+  service:
+    name: dovecot
+    state: reloaded
+  become: yes

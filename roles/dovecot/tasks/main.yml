@@ -1,0 +1,94 @@
+- block:
+
+
+  - name: ensure dovecot is installed
+    package:
+      name: "{{ item }}"
+    notify: reload mda
+    loop:
+    - dovecot-imapd
+    - dovecot-lmtpd
+    - dovecot-managesieved
+    - dovecot-sieve
+
+  - name: ensure the vmail user is present
+    user:
+      name: vmail
+      home: /var/vmail
+      shell: /bin/nologin
+
+  - name: ensure main dovecot config file is up to date
+    template:
+      backup: yes
+      dest: /etc/dovecot/
+      src: dovecot.conf
+    notify: reload mda
+
+  - block:
+
+      - name: ensure global sieve include scripts are up to date
+        template:
+          backup: yes
+          dest: /var/lib/dovecot/sieve/global/
+          src: "{{ item }}"
+        loop:
+        - fix-missing-date.sieve
+        - junk.sieve
+
+      - name: ensure the default sieve script is up to date
+        template:
+          backup: yes
+          dest: /var/lib/dovecot/sieve/default.sieve
+          src: default.sieve
+        register: default_sieve_script
+
+      - name: compile the default sieve script
+        command: sievec /var/lib/dovecot/sieve/default.sieve
+        when: default_sieve_script is changed
+
+    tags:
+    - sieve
+
+  - name: ensure dovecot conf.d files are up to date
+    template:
+      backup: yes
+      dest: /etc/dovecot/conf.d/
+      src: conf.d/{{ item }}
+    notify: reload mda
+    loop:
+    - 10-auth.conf
+    - 10-director.conf
+    - 10-logging.conf
+    - 10-mail.conf
+    - 10-master.conf
+    - 10-ssl.conf
+    - 10-tcpwrapper.conf
+    - 15-lda.conf
+    - 15-mailboxes.conf
+    - 20-imap.conf
+    - 20-lmtp.conf
+    - 20-managesieve.conf
+    - 90-acl.conf
+    - 90-plugin.conf
+    - 90-quota.conf
+    - 90-sieve.conf
+
+  - name: ensure /etc/nftables.d/50-dovecot.nft is up to date
+    template:
+      src: 50-dovecot.nft
+      dest: /etc/nftables.d/
+    notify: reload nftables
+
+  - name: ensure dovecot reloads on cert update
+    template:
+      src: cert_update.sh
+      dest: /etc/ssl/update.hooks/dovecot
+      mode: 0755
+      backup: yes
+
+
+  become: yes
+  tags:
+  - mailserver
+  - mda
+  - dovecot

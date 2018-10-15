@@ -1,0 +1,6 @@
+{{ ansible_managed|comment }}
+
+# This is a policy map, overriding the default opportunistic tls behaviour for
+# selected hosts. Basically, you can enforce TLS for specific domains, and even
+# control how they are verified. See
+# http://www.postfix.org/TLS_README.html#client_tls_policy for more.

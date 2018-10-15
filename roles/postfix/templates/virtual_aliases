@@ -1,0 +1,5 @@
+{{ ansible_managed|comment }}
+
+
+test1@mail.invalid         test2@mail.invalid
+foo@mail.invalid           test2@janbeinke.de

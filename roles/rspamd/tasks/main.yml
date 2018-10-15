@@ -1,0 +1,83 @@
+- block:
+
+
+  - name: ensure rspamd gpg key is allowed by apt
+    copy:
+      src: rspamd.gpg
+      dest: /etc/apt/trusted.gpg.d/rspamd.gpg
+    register: rspamd_apt_key
+
+  - name: ensure the rspamd sources are included by apt
+    template:
+      src: rspamd.list
+      dest: /etc/apt/sources.list.d/rspamd.list
+    register: rspamd_apt_sources
+
+  - name: ensure the apt cache is updated
+    apt:
+      update_cache: yes
+    when: rspamd_apt_key is changed or rspamd_apt_sources is changed
+
+  - name: ensure rspamd is installed
+    package:
+      name: rspamd
+
+  - name: ensure the config for rspamd is up to date
+    template:
+      src: "{{ item }}"
+      dest: /etc/rspamd/local.d/
+    loop:
+    - dkim_signing.conf
+    - logging.inc
+    - milter_headers.conf
+    - worker-controller.inc
+    - worker-normal.inc
+    - worker-proxy.inc
+    notify: reload rspamd
+
+
+  - block:
+
+
+    - name: ensure redis is installed
+      package:
+        name: redis-server
+      when: rspamd_greylisting
+
+    - name: ensure the redis config for rspamd is up to date
+      template:
+        src: redis.conf
+        dest: /etc/rspamd/local.d/
+      notify: reload rspamd
+
+
+    when: rspamd_greylisting
+    tags:
+    - greylisting
+    - redis
+
+
+  - name: ensure the directory holding the dkim keys is present
+    file:
+      dest: /var/lib/rspamd/dkim
+      state: directory
+      mode: 0700
+      owner: _rspamd
+      group: _rspamd
+
+  - name: ensure the proper dkim keys are present on the machine
+    copy:
+      content: "{{ mail_domains[domain].dkim_key }}"
+      dest: /var/lib/rspamd/dkim/{{ domain }}.{{ mail_domains[domain].dkim_selector|default('dkim') }}.key
+      mode: 0640
+      group: _rspamd
+    loop_control:
+      loop_var: domain
+    loop: "{{ (mail_domains|default({})).items() | selectattr('1.dkim_key', 'defined') | map(attribute='0') | list }}"
+    notify: reload rspamd
+
+
+  become: yes
+  tags:
+  - mailserver
+  - rspamd

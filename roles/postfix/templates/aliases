@@ -1,0 +1,9 @@
+{{ ansible_managed|comment }}
+
+# See man 5 aliases for format
+
+
+test5:         root
+postmaster:    root
+
+root:          admin@janbeinke.de

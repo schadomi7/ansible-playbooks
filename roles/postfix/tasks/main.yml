@@ -1,0 +1,73 @@
+- block:
+
+
+  - name: ensure postfix is installed
+    package:
+      name: postfix
+
+  - name: ensure postfix configs are up to date
+    template:
+      src: "{{ item }}"
+      dest: /etc/postfix/
+    notify: reload postfix
+    loop:
+      - main.cf
+      - master.cf
+      - postscreen_access
+      - submission_header_cleanup
+
+  - name: ensure the aliases are up to date
+    template:
+      src: aliases
+      dest: /etc/
+    register: aliases
+
+  - name: reload the aliases
+    command: postalias /etc/aliases
+    when: aliases is changed
+
+  - name: ensure the virtual_aliases are up to date
+    template:
+      src: virtual_aliases
+      dest: /etc/postfix/
+    register: virtual_aliases
+
+  - name: remap the virtual_aliases
+    command: postmap /etc/postfix/virtual_aliases
+    when: virtual_aliases is changed
+
+  - name: ensure the tls_policy are up to date
+    template:
+      src: tls_policy
+      dest: /etc/postfix/
+    register: tls_policy
+
+  - name: remap the tls_policy
+    command: postmap /etc/postfix/tls_policy
+    when: tls_policy is changed
+
+  - name: ensure custom dh params have been generated
+    command: openssl dhparam -out /etc/ssl/private/dh2048.pem 2048
+    args:
+      creates: /etc/ssl/private/dh2048.pem
+    notify: reload postfix
+
+  - name: ensure /etc/nftables.d/50-postfix.nft is up to date
+    template:
+      src: 50-postfix.nft
+      dest: /etc/nftables.d/
+    notify: reload nftables
+
+  - name: ensure dovecot reloads on cert update
+    template:
+      src: cert_update.sh
+      dest: /etc/ssl/update.hooks/postfix
+      mode: 0755
+      backup: yes
+
+
+  become: yes
+  tags:
+  - mailserver
+  - mta
+  - postfix

@@ -1,0 +1,18 @@
+{{ ansible_managed|comment }}
+
+
+table inet filter {
+
+
+  # Allow all incoming smtp traffic
+  # TODO: ann some limits to mitigate DOS attacks
+  map tcp_dport_verdict {
+    type inet_service : verdict;
+    elements = {
+                 smtp : accept,
+                 submission: accept,
+               };
+  }
+
+
+}

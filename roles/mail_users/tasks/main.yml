@@ -1,0 +1,18 @@
+- block:
+
+  - name: ensure the /etc/mail dir is present
+    file:
+      state: directory
+      dest: /etc/mail
+    become: yes
+
+  - name: ensure the mail.passwd file is up to date
+    template:
+      src: passwd
+      dest: /etc/mail/passwd
+      backup: no
+    become: yes
+
+  tags:
+  - mailserver
+  - mailusers

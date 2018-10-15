@@ -1,0 +1,59 @@
+- block:
+
+
+  - name: ensure unbound is installed
+    package:
+      name: unbound
+
+  - name: ensure an updated root hints are present
+    get_url:
+      url: https://www.internic.net/domain/named.cache
+      dest: /etc/unbound/root.hints
+
+  - name: ensure unbound uses the new root hints
+    template:
+      src: root-hints.conf
+      dest: /etc/unbound/unbound.conf.d/
+      backup: yes
+    notify: reload unbound
+
+  - name: ensure the service and timer for auto update of root hints are up to date
+    template:
+      src: "{{ item }}"
+      dest: /etc/systemd/system/
+      backup: yes
+    loop:
+    - roothints.service
+    - roothints.timer
+    register: roothints_servicefiles
+
+  - name: reload systemd to notice the changed files
+    systemd:
+      daemon_reload: yes
+    when: roothints_servicefiles is changed
+
+  - name: ensure the timer for auto update of root hints is enabled
+    service:
+      name: roothints.timer
+      state: started
+      enabled: yes
+
+  # Flush handlers so following stuff can use updated local dns cache
+  - meta: flush_handlers
+
+  - name: ensure dhclient will not change resolv.conf
+    template:
+      src: nodnsupdate
+      dest: /etc/dhcp/dhclient-enter-hooks.d/
+
+  - name: ensure resolv.conf is up to date and the local dns caching server is used
+    template:
+      src: resolv.conf
+      dest: /etc
+
+
+  become: yes
+  tags:
+  - dns
+  - dns_cache
+  - unbound

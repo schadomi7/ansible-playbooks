@@ -1,0 +1,185 @@
+{{ ansible_managed|comment }}
+
+# See /usr/share/postfix/main.cf.dist for a commented, more complete version
+
+
+#################
+# Meta settings #
+#################
+# on which version of postfix config compatibility are we
+# see http://www.postfix.org/COMPATIBILITY_README.html
+compatibility_level = 2
+
+
+####################
+# Network settings #
+####################
+# listen on all interfaces
+inet_interfaces = all
+# set hostname explicitly, as to always match our mx records (/etc/hostname might be different)
+# this is used in HELO for example
+myhostname = {{ ansible_host }}
+# which mails are considered local, e.g. this host
+# mail-only users are called "virtual", but we need local users for stuff like mailer-daemon, etc.
+mydestination = $myhostname, {{ inventory_hostname }}, localhost
+# our hosts, trusted to do almost anything (relay without auth, etc.)
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+
+
+#################
+# Queue timings #
+#################
+# how long to keep message on queue before return as failed
+maximal_queue_lifetime = 7d
+# generate a warning mail if mail is stuck in queue for a long time
+delay_warning_time = 4h
+
+
+#####################
+# Postscreen filter #
+#####################
+# Postscreen checks incoming connections before they even start to send data
+# static white and blacklists
+postscreen_access_list = permit_mynetworks
+                         cidr:/etc/postfix/postscreen_access
+# immediately reject the connection when blacklisted
+postscreen_blacklist_action = drop
+# also reject servers talking too early
+postscreen_greet_action = drop
+# dns blocklists (weighted)
+postscreen_dnsbl_threshold = 2
+postscreen_dnsbl_sites = dnsbl.sorbs.net*1, bl.spamcop.net*1, ix.dnsbl.manitu.net*2, zen.spamhaus.org*2
+postscreen_dnsbl_action = drop
+
+
+##################
+# TLS parameters #
+##################
+smtpd_tls_cert_file = {{ ssl_cert|mandatory }}
+smtpd_tls_key_file = {{ ssl_key|mandatory }}
+# disable compression and set strong ciphers
+tls_ssl_options = NO_COMPRESSION
+tls_high_cipherlist = EDH+CAMELLIA:EDH+aRSA:EECDH+aRSA+AESGCM:EECDH+aRSA+SHA256:EECDH:+CAMELLIA128:+AES128:+SSLv3:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!DSS:!RC4:!SEED:!IDEA:!ECDSA:kEDH:CAMELLIA128-SHA:AES128-SHA
+
+
+########################
+# Incoming connections #
+########################
+# allow encryption, but do not force
+smtpd_tls_security_level = may
+# disable old ssl, use our cipherlist
+smtpd_tls_protocols = !SSLv2, !SSLv3, !TLSv1
+smtpd_tls_ciphers = high
+# use generated dhparams
+smtpd_tls_dh1024_param_file = /etc/ssl/private/dh2048.pem
+# use tls session cache
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+
+
+########################
+# Outgoing connections #
+########################
+# try dane, then regular ssl (without verification), then send unencrypted
+smtp_tls_security_level = dane
+smtp_dns_support_level = dnssec
+# special policies for known hosts
+smtp_tls_policy_maps = hash:/etc/postfix/tls_policy
+# use tls session cache
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+# disable old ssl, use our cipherlist
+# We want outgoing mails to just work b/c we are the ones to fix it, when they dont.
+# And since we are already using opportunistic tls allowing TLSv1 a little longer seams reasonable
+smtp_tls_protocols = !SSLv2, !SSLv3
+#smtp_tls_protocols = !SSLv2, !SSLv3, !TLSv1
+smtp_tls_ciphers = high
+# specify trusted CAs
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+
+
+#########################################
+# SMTPD restrictions (after postscreen) #
+#########################################
+# only for s2s, clients are configured in master.cf
+# general "what do we accept" rule
+# non_fqdn_recipient & unknown_recipient reject ALL mails to invalid domains
+# permit_mynetworks allows our own servers to send anything to anyone, as long as the above checks succeeded
+# reject_unauth_destination rejects all mails not sent to us (except for the case above), this prevents the "Open Relay"
+smtpd_relay_restrictions = reject_non_fqdn_recipient
+                           reject_unknown_recipient_domain
+                           permit_mynetworks
+                           reject_unauth_destination
+# for incoming mails, what do we accept?
+# this happens "after" relay_restrictions
+# reject mail to unknown recipients and also if user is over quota
+smtpd_recipient_restrictions = reject_unverified_recipient
+                               check_policy_service unix:private/dovecot-quota-status
+# what kind of incoming connections do we accept?
+# currently everything, as most filtering will be done by rspamd
+smtpd_client_restrictions =
+# require a HELO
+smtpd_helo_required = yes
+# require a valid hostname for HELO
+smtpd_helo_restrictions = permit_mynetworks
+                          reject_invalid_helo_hostname
+                          reject_non_fqdn_helo_hostname
+                          reject_unknown_helo_hostname
+# reject clients trying to pipeline early
+smtpd_data_restrictions = reject_unauth_pipelining
+# how many address can be used in one message.
+# effective stopper to mass spammers, accidental copy in whole address list
+# but may restrict intentional mail shots.
+smtpd_recipient_limit = 1024
+
+
+###########################################
+# Milter external Filtering (during SMTP) #
+###########################################
+milter_default_action = accept
+milter_protocol = 6
+# this is rspamd
+smtpd_milters = inet:localhost:11332
+non_smtpd_milters = inet:localhost:11332
+milter_mail_macros = i {mail_addr} {client_addr} {client_name} {auth_authen}
+
+
+##########################
+# General SMTPD settings #
+##########################
+# do not let spammers check addresses in advance
+disable_vrfy_command = yes
+# how many error before back off.
+smtpd_soft_error_limit = 3
+# how many max errors before blocking it.
+smtpd_hard_error_limit = 12
+
+
+##############################################
+# Local mail delivery (happens after milter) #
+##############################################
+# look up aliases from files and then ldap
+virtual_alias_maps = hash:$config_directory/virtual_aliases
+# These are the domains we accept mails for
+virtual_mailbox_domains = mail.invalid, janbeinke.de, 0jb.de
+# Pass mails to dovecot via lmtp
+virtual_transport = lmtp:unix:private/dovecot-lmtp
+
+
+##################
+# Other settings #
+##################
+# Mailbox size limit is enforced by dovecot, so set it to unlimited here
+# TODO: This is prob just for local mails, which should not exist
+mailbox_size_limit = 0
+# max message size
+message_size_limit = 104857600
+# do not try to notify local users
+biff = no
+# do not append domains
+append_dot_mydomain = no
+# delimiter
+recipient_delimiter = +
+# allow for faster adding of new aliases by less caching
+address_verify_negative_expire_time = 30m
+address_verify_negative_refresh_time = 3m
+# suppress the nis domain not set message
+alias_maps = hash:/etc/aliases
