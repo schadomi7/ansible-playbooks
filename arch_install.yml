@@ -5,7 +5,7 @@
   vars:
     luks_container_name: ARCH
     lvm_volgroup_name: ARCH
-    swap_size: 16G
+    swap_size: 100M
     swap_name: swap
     root_name: root
 
@@ -70,7 +70,7 @@
           sfdisk "{{ install_disk }}" <<EOF
           label: gpt
 
-          size=512MiB, type=1
+          size=128MiB, type=1
           type=20
 
           EOF
@@ -340,10 +340,10 @@
 
   roles:
   - role: user
-    user_name: beinke
-    user_password: "{{ users.beinke.password }}"
-    user_ssh_keys: "{{ users.beinke.ssh_keys }}"
-    user_sudo: "{{ users.beinke.sudo }}"
+    user_name: schadomi
+    user_password: "{{ users.schadomi.password }}"
+    user_ssh_keys: "{{ users.schadomi.ssh_keys }}"
+    user_sudo: "{{ users.schadomi.sudo }}"
 
 
 - hosts: localhost

@@ -2,11 +2,11 @@ all:
   vars:
 
     server_ssh_keys:
-    - beinke@th1
+    - schadomi@echo
 
     users:
-      beinke:
+      schadomi:
         sudo: yes
         ssh_keys:
-        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMCC4cFL1xcZOsIzXg1b/M4b89ofMKErNhg9s+0NdBVC beinke@th1
-        password: $6$rounds=424242$4XeOOipFMr154yFt$duKTFu2mSR9LnrGILjgumlxl8FltvCo9RBjhWi1N56avEVaAJym3LFlw3y2.JMCVYAO2ZpK75eF7B/7cSu5rR0
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKIw4DQn0EjiNGfPmb4A063OTvBbv9RlgHNdXg+m8x7W schadomi@echo
+        password: $6$rounds=656000$YcLrM0EqT/ydfqRG$tYwzc.n1nL7KkQn7/AJrdOGXWcTSWRZFvpR/d1put4Yva.6OrTBt56y2lU9XNAfTQAdCglOQ2Jpgc8G2tytTu0
