@@ -70,8 +70,8 @@
           sfdisk "{{ install_disk }}" <<EOF
           label: gpt
 
-          size=128MiB, type=1
-          type=20
+          size=128MiB, type=uefi
+          type=0FC63DAF-8483-4772-8E79-3D69D8477DE4
 
           EOF
 
