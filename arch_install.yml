@@ -205,7 +205,7 @@
     - always
 
   - name: install base system
-    command: pacstrap {{ root_mountpoint|quote }} linux linux-firmware base base-devel python
+    command: pacstrap {{ root_mountpoint|quote }} linux linux-firmware lvm2 base base-devel python
     become: yes
     tags:
     - install
