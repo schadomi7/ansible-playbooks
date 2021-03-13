@@ -303,7 +303,7 @@
 
   - name: ensure the mkinitcpio is configured for an encrypted root partition
     lineinfile:
-      line: HOOKS=(base udev autodetect modconf block keyboard keymap encrypt lvm2 filesystems fsck shutdown)
+      line: HOOKS=(base udev autodetect modconf block keyboard keymap encrypt lvm2 filesystems resume fsck shutdown)
       regexp: ^HOOKS=
       dest: /etc/mkinitcpio.conf
 
