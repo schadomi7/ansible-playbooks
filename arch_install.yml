@@ -5,7 +5,7 @@
   vars:
     luks_container_name: ARCH
     lvm_volgroup_name: ARCH
-    swap_size: 100M
+    swap_size: 32G
     swap_name: swap
     root_name: root
 
@@ -19,7 +19,7 @@
     - de_DE.UTF-8 UTF-8
 
     lang: en_US.UTF-8
-    keymap: de-latin1-nodeadkeys
+    keymap: de-latin1
 
     ucode: intel
 
@@ -330,13 +330,19 @@
         initrd  /intel-ucode.img
         initrd  /initramfs-linux.img
         options root=LABEL=arch_os rw
-        options root=UUID={{ lookup('pipe', 'lsblk -no uuid /dev/mapper/'+lvm_volgroup_name+'-root') }} rw cryptdevice=UUID={{ lookup('pipe', 'lsblk -no uuid '+part_crypt+' | head -n1') }}:cryptolvm
+        # options root=UUID={{ lookup('pipe', 'lsblk -no uuid /dev/mapper/'+lvm_volgroup_name+'-root') }} rw cryptdevice=UUID={{ lookup('pipe', 'lsblk -no uuid '+part_crypt+' | head -n1') }}:cryptolvm
+        # I was unable to make uuid work with hibernation, so I will use names instead
+        options root=/dev/mapper/{{ lvm_volgroup_name }}-root rw cryptdevice={{ part_crypt }}:{{ lvm_volgroup_name }} resume=/dev/mapper/{{ lvm_volgroup_name }}-swap
+        # cgroups v2
+        options systemd.unified_cgroup_hierarchy=1
+        # gruvbox dark colors from https://gist.github.com/thepont/578f5012829b69e8a4fe471e2b27ad37
+        options vt.default_red=40,204,151,215,69,177,104,168,148,251,184,250,131,211,142,235 vt.default_grn=40,36,151,153,133,98,156,153,131,73,187,189,165,134,192,219 vt.default_blu=40,29,26,33,136,134,106,132,116,52,38,47,152,155,124,178
       dest: /boot/loader/entries/arch.conf
 
   - name: add some packets that will come handy later
     pacman:
       update_cache: yes
-      name: ansible git openssh sshfs rxvt-unicode-terminfo
+      name: ansible git openssh sshfs rxvt-unicode-terminfo kitty sway dmenu xorg-xwayland
 
   roles:
   - role: user
